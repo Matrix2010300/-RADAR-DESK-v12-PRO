@@ -1103,7 +1103,7 @@ $('#bnt').onclick=async()=>{try{const b=await bn('GET','/fapi/v2/balance'),u=b.f
  const msg='Binance '+(S.bnTest?'(Testnet)':'(حقيقي)')+' متصل • رصيد USDT: '+(+u.availableBalance||0).toFixed(2);
  $('#st').textContent='> '+msg;toast('✅ '+msg)}catch(e){$('#st').textContent='> Binance: '+e.message;alert(e.message)}};
 
-/* ====== حارس البتكوين وحد الاتجاه ====== */
+/* ====== حارس البتكوين وحد الاتجاه (اتجاه 4 ساعات) ====== */
 const BTC=Object.assign({dir:0,since:0,cand:0},load('btc12',{}));
 const saveBTC=()=>save('btc12',{dir:BTC.dir,since:BTC.since});
 let REV=[],revBusy=false,btcBusy=false;
@@ -1190,24 +1190,31 @@ async function onFlip(d,why){
  await revScan(d);
 }
 
-const BTCH=[];let B1H={t:0,dir:0};
-function btcOK(s){if(!S.btcGuard||!BTC.dir)return true;const d=s.side==='long'?1:-1;if(d!==BTC.dir)return false;return !BTC.h1||BTC.h1===d||s.score>=S.minScore+8}
+const BTCH=[];let B4H={t:0,dir:0};
+function btcOK(s){if(!S.btcGuard||!BTC.dir)return true;const d=s.side==='long'?1:-1;if(d!==BTC.dir)return false;return !BTC.h4||BTC.h4===d||s.score>=S.minScore+8}
 async function btcCheck(){
  if(!S.btcGuard||btcBusy||training)return;btcBusy=true;
  try{
-  const k=await q('BTCUSDT','15m',60);k.pop();
-  if(Date.now()-B1H.t>3e5){const k1=await q('BTCUSDT','1h',100);k1.pop();const c1=k1.map(x=>x.c),a=ema(c1,20).pop(),b=ema(c1,50).pop(),l1=c1[c1.length-1];B1H={t:Date.now(),dir:l1>a&&a>b?1:l1<a&&a<b?-1:0}}
-  BTC.h1=B1H.dir;
-  const c=k.map(x=>x.c),e9=ema(c,9).pop(),e21=ema(c,21).pop(),l=c[c.length-1],px=livePrice('BTCUSDT',60000)||l,now=Date.now();
+  // الفلتر الأساسي لاتجاه البتكوين على فريم 4 ساعات (4H)
+  if(Date.now()-B4H.t>900e3){
+    const k4=await q('BTCUSDT','4h',100);k4.pop();
+    const c4=k4.map(x=>x.c),a4=ema(c4,20).pop(),b4=ema(c4,50).pop(),l4=c4[c4.length-1];
+    B4H={t:Date.now(),dir:l4>a4&&a4>b4?1:l4<a4&&a4<b4?-1:0};
+  }
+  BTC.h4=B4H.dir;
+
+  const k15=await q('BTCUSDT','15m',60);k15.pop();
+  const c15=k15.map(x=>x.c),e9=ema(c15,9).pop(),e21=ema(c15,21).pop(),l15=c15[c15.length-1],px=livePrice('BTCUSDT',60000)||l15,now=Date.now();
   BTCH.push([now,px]);while(BTCH.length&&now-BTCH[0][0]>9e5)BTCH.shift();
   const old=BTCH[0],mv=old&&now-old[0]>=3e5?(px-old[1])/old[1]*100:0;
-  const tdir=e9>e21&&l>e21?1:e9<e21&&l<e21?-1:0,fast=Math.abs(mv)>=S.btcFast?Math.sign(mv):0;
-  if(!BTC.dir){const d0=tdir||B1H.dir;if(d0){BTC.dir=d0;BTC.since=now;saveBTC();mlog('₿ اتجاه البتكوين: '+(d0>0?'صاعد':'هابط')+' (1س: '+(B1H.dir>0?'صاعد':B1H.dir<0?'هابط':'محايد')+')')}return}
+  const tdir=e9>e21&&l15>e21?1:e9<e21&&l15<e21?-1:0,fast=Math.abs(mv)>=S.btcFast?Math.sign(mv):0;
+
+  if(!BTC.dir){const d0=tdir||B4H.dir;if(d0){BTC.dir=d0;BTC.since=now;saveBTC();mlog('₿ اتجاه البتكوين (4س): '+(d0>0?'صاعد':'هابط'))}return}
   const cd=fast&&fast!==BTC.dir?fast:tdir;
   if(!cd||cd===BTC.dir){BTC.cand=0;return}
   if(fast!==cd){if(now-BTC.since<6e5)return;if(++BTC.cand<2)return}
   BTC.cand=0;BTC.dir=cd;BTC.since=now;saveBTC();BTCH.length=0;
-  await onFlip(cd,fast===cd?'حركة سريعة '+mv.toFixed(2)+'% خلال دقائق':'كسر EMA9/EMA21 على 15 دقيقة');
+  await onFlip(cd,fast===cd?'حركة سريعة '+mv.toFixed(2)+'% خلال دقائق':'تقاطع المتوسطات على 4 ساعات');
  }catch(e){}finally{btcBusy=false}
 }
 setInterval(btcCheck,20000);setTimeout(btcCheck,4000);
