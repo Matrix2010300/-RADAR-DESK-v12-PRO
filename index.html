@@ -1,0 +1,188 @@
+<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ORB Radar Desk</title>
+<style>
+:root{--card:#0b1230;--line:#16365a;--c:#19d3ff;--g:#18e6a0;--r:#ff3d7f;--y:#ffb62e;--t:#e8f1ff;--m:#7f93b5}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 0,#10204a,#060b1f 60%) #060b1f;color:var(--t);font-family:system-ui,sans-serif;padding:12px;max-width:560px;margin-inline:auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px}
+.mono{font-family:ui-monospace,monospace}.g{color:var(--g)}.r{color:var(--r)}.c{color:var(--c)}.y{color:var(--y)}.m{color:var(--m)}
+h1{margin:0;font-size:24px;letter-spacing:1px}h1 small{font-size:11px;border:1px solid var(--line);border-radius:8px;padding:2px 8px;color:var(--c)}
+.st{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;text-align:center}.st b{display:block;font-size:20px}.st span{font-size:11px;color:var(--m)}
+.row{display:flex;gap:8px;flex-wrap:wrap}button{border:0;border-radius:12px;padding:11px 14px;font-weight:700;font-size:14px;color:#fff;background:#14264d;flex:1;font-family:inherit}
+.b1{background:linear-gradient(90deg,#19d3ff,#8a5cff)}.b2{background:linear-gradient(90deg,#f6c53c,#18e6a0);color:#061}.b3{background:linear-gradient(90deg,#ff3d7f,#ffa03a)}.b4{border:1px solid var(--line)}
+.bar{height:8px;border-radius:6px;background:#161f3d;overflow:hidden;margin:10px 0 4px}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--c),var(--g));width:0}
+.set{display:none;grid-template-columns:1fr 1fr;gap:8px}.set.on{display:grid}.set label{font-size:11px;color:var(--m)}.set input,.set select{width:100%;background:#070d24;border:1px solid var(--line);color:var(--t);border-radius:10px;padding:9px;font-size:14px}
+.sg{border-color:#3a2150}.sg.up{border-color:#14504a}.sg.done{opacity:.55}.top{display:flex;justify-content:space-between;align-items:center}.top b{font-size:22px}
+.tag{font-size:11px;border:1px solid var(--line);border-radius:8px;padding:2px 8px;color:var(--c);margin-inline-start:6px}
+.pr{display:flex;justify-content:space-between;font-size:13px;margin-top:8px}.act{display:flex;gap:8px;margin-top:10px}.act button{padding:10px 6px}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{padding:7px 4px;text-align:center;border-bottom:1px solid #12224a}th{color:var(--m);font-weight:400;font-size:11px}
+#log{font-size:11px;color:var(--m);max-height:130px;overflow:auto;white-space:pre-wrap}.w{font-size:11px;color:var(--y);margin:8px 0 0}
+</style></head><body>
+<div class="card"><h1>ORB RADAR <small>DESK v3.1 HUNTER</small> <span id="dot" class="g">●</span></h1>
+<div class="st"><div><b id="s1" class="c">0</b><span>عملات مرشحة</span></div><div><b id="s2">0</b><span>إشارات</span></div><div><b id="s3">0</b><span>مفتوحة</span></div><div><b id="s4" class="g">$0</b><span>الربح</span></div></div></div>
+
+<div class="card"><div class="row"><button class="b1" onclick="scan()">⚡ باك تيست</button><button class="b2" onclick="live(1)">🔎 فحص الإشارات</button></div>
+<div class="row" style="margin-top:8px"><button class="b4" id="bAuto" onclick="tog('auto')"></button><button class="b4" id="bMode" onclick="tog('real')"></button><button class="b4" onclick="$('#set').classList.toggle('on')">⚙️</button></div>
+<div class="row" style="margin-top:8px"><button class="b4" onclick="report()">📅 تقرير اليوم</button><button class="b4" onclick="clr()">🗑 مسح السجل</button></div>
+<div class="bar"><i id="pb"></i></div><div id="pt" class="m" style="font-size:12px">جاهز</div></div>
+
+<div class="card"><div id="set" class="set"></div><p class="w" id="wr"></p></div>
+
+<div class="card" id="grd"></div><div id="rpt"></div><div id="sigs"></div>
+
+<div class="card"><b>🎯 العملات المرشحة</b> <span class="m" id="cinfo" style="font-size:11px"></span>
+<table><thead><tr><th>الترتيب</th><th>العملة</th><th>صفقات</th><th>نجاح</th><th>R</th><th>PF</th></tr></thead><tbody id="ct"></tbody></table></div>
+<div class="card"><div id="log"></div></div>
+
+<script>
+const $=s=>document.querySelector(s),sl=ms=>new Promise(r=>setTimeout(r,ms)),B='https://fapi.binance.com';
+const D={days:90,rr:1.5,sl:'opposite',maxRisk:5,maxPrice:0,minVol:5,maxCoins:60,autoBan:1,banDays:7,pin:'JUPUSDT,HBARUSDT,ATUSDT,CAKEUSDT,ZECUSDT,ONDOUSDT,ENAUSDT,ARUSDT,MMTUSDT,ARBUSDT',usePin:0,autoExec:1,maxAge:30,hold:24,minWin:55,minTrades:15,minR:3,pf:1.5,topN:15,fav:'XVGUSDT,BTCUSDT,JUPUSDT,HBARUSDT',ver:7,reserve:5,maxOpen:3,dayLoss:10,streak:3,robust:1,minBody:0.55,closePos:0.72,volMult:1.3,breakoutPct:0.03,useTrend:1,tgT:'',tgC:'',key:'',secret:'',size:20,lev:10,real:0,auto:1};
+const sv0=JSON.parse(localStorage.orbCfg||'{}');let cfg={...D,...sv0},cands=JSON.parse(localStorage.orbC||'[]'),sigs=JSON.parse(localStorage.orbS||'[]'),seen=JSON.parse(localStorage.orbSeen||'{}'),ban=JSON.parse(localStorage.orbBan||'{}'),EX={},px={},busy=0;
+if((sv0.ver||0)<2){['maxPrice','minWin','minTrades','minR','pf','topN','fav'].forEach(k=>cfg[k]=D[k]);cfg.ver=2;localStorage.orbCfg=JSON.stringify(cfg)}
+if((cfg.ver||0)<5){cfg.pin=cfg.pin.split(',').map(x=>x.trim()).filter(x=>x&&!/^EVAA/i.test(x)).join(',');if(!/MMT/i.test(cfg.pin))cfg.pin+=',MMTUSDT'}
+if((cfg.ver||0)<6){cfg.minBody=cfg.minBody??D.minBody;cfg.closePos=cfg.closePos??D.closePos;cfg.volMult=cfg.volMult??D.volMult;cfg.breakoutPct=cfg.breakoutPct??D.breakoutPct;cfg.useTrend=cfg.useTrend??D.useTrend;cfg.ver=6;localStorage.orbCfg=JSON.stringify(cfg)}
+if((cfg.ver||0)<7){if(!cfg.pin.split(',').some(x=>x.trim().toUpperCase().replace(/USDT$/,'')==='ARB'))cfg.pin+=',ARBUSDT';cfg.rankMode=1;cfg.ver=7;localStorage.orbCfg=JSON.stringify(cfg)}
+if((cfg.ver||0)<8){cfg.usePin=0;cfg.maxCoins=60;cfg.topN=15;cfg.days=90;cfg.ver=8;localStorage.orbCfg=JSON.stringify(cfg)}
+const F=[['days','أيام الباك تيست','sel:30,60,90,120'],['hold','أقصى مدة للصفقة في الباك تيست (ساعة)','n'],['rr','نسبة R (الهدف)','n'],['sl','الوقف','sel:opposite,mid'],['maxRisk','أقصى مسافة وقف % من السعر','n'],['minBody','أقل جسم شمعة (0.55 = 55%)','n'],['closePos','إغلاق قرب الطرف (0.72 = 72%)','n'],['volMult','الفوليوم × متوسط 20 شمعة','n'],['breakoutPct','تأكيد الاختراق %','n'],['useTrend','فلتر EMA 9/21 (1/0)','n'],['maxPrice','أقصى سعر $ (0 = بدون حد)','n'],['minVol','أقل حجم (مليون)','n'],['maxCoins','عدد العملات للفحص (المقترح 60)','n'],['usePin','قائمة ثابتة (1/0)','n'],['pin','العملات الثابتة (بفاصلة)','t'],['autoExec','تنفيذ تلقائي عند الإشارة (1/0)','n'],['maxAge','أقصى عمر للإشارة (دقيقة)','n'],['autoBan','استبعاد اللي ضرب وقف (1/0)','n'],['banDays','مدة الاستبعاد (أيام)','n'],['minTrades','أقل صفقات','n'],['topN','أقصى عدد مرشحين','n'],['reserve','احتياطي من الرصيد %','n'],['maxOpen','أقصى صفقات مفتوحة','n'],['dayLoss','حد الخسارة اليومي $','n'],['streak','وقف بعد خسائر متتالية','n'],['fav','عملات مفضلة (بفاصلة)','t'],['size','مبلغ الصفقة $','n'],['lev','الرافعة','n'],['tgT','Telegram Token','t'],['tgC','Telegram Chat ID','t'],['key','Binance API Key','p'],['secret','Binance Secret','p']];
+$('#set').innerHTML=F.map(([k,l,t])=>`<div><label>${l}</label>`+(t.startsWith('sel')?`<select onchange="cf('${k}',this.value)">${t.slice(4).split(',').map(o=>`<option ${o==cfg[k]?'selected':''}>${o}</option>`).join('')}</select>`:`<input type="${t=='n'?'number':t=='p'?'password':'text'}" step="any" value="${cfg[k]}" onchange="cf('${k}',this.value)">`)+'</div>').join('');
+$('#wr').textContent='🏆 SMART COIN HUNTER: يفحص أعلى 60 عقد USDT Perpetual من حيث السيولة (مع إضافة العملات المفضلة والقائمة اليدوية)، ثم يرتب أفضل 15 عملة ذات نتائج تاريخية إيجابية. يمكن رفع عدد الفحص من الإعدادات. الفلاتر: جسم شمعة قوي + إغلاق قرب الطرف + فوليوم أعلى من متوسط 20 شمعة + توافق EMA 9/21 + اختراق واضح. ⚠️ الاختبار التاريخي لا يضمن الربح، ومفاتيح Binance ما زالت محفوظة في المتصفح؛ لا تستخدم الوضع الحقيقي قبل نقل التنفيذ إلى خادم آمن.';
+function cf(k,v){cfg[k]=typeof D[k]=='number'?+v:v;localStorage.orbCfg=JSON.stringify(cfg);if(k=='pin'||k=='usePin'){applyPin();render()}}
+function tog(k){cfg[k]=cfg[k]?0:1;cf(k,cfg[k]);hdr();if(k=='auto')timers()}
+function hdr(){$('#bAuto').textContent='تشغيل تلقائي: '+(cfg.auto?'شغال':'واقف');$('#bMode').textContent=cfg.real?'🔴 حقيقي':'🧪 تجريبي';$('#bMode').style.color=cfg.real?'#ff3d7f':'#18e6a0'}
+function log(m){const e=$('#log');e.textContent=new Date().toLocaleTimeString('en-GB')+' '+m+'\n'+e.textContent.slice(0,2500)}
+function sv(){sigs=sigs.slice(0,40);localStorage.orbS=JSON.stringify(sigs);localStorage.orbSeen=JSON.stringify(seen)}
+const favL=()=>cfg.fav.split(',').map(x=>x.trim().toUpperCase()).filter(Boolean).map(x=>x.endsWith('USDT')?x:x+'USDT'),favSet=()=>new Set(favL()),wil=(w,n)=>{if(!n)return 0;const p=w/n,z2=1.64*1.64;return(p+z2/(2*n)-1.64*Math.sqrt((p*(1-p)+z2/(4*n))/n))/(1+z2/n)};
+function rankScore(c){if(!c||!c.n)return 0;const confidence=Math.max(0,Math.min(1,wil(c.w||0,c.n||0)));const per=(c.R||0)/Math.max(1,c.n||0);const rScore=Math.max(0,Math.min(1,(per+0.10)/0.45));const pfScore=Math.max(0,Math.min(1,Math.log1p(Math.max(0,c.pf||0))/Math.log(4)));const h1=c.h1||0,h2=c.h2||0,stable=(h1>0&&h2>0)?1:(h1<=0&&h2<=0)?0:0.35;return Math.round((confidence*35+rScore*30+pfScore*20+stable*15)*10)/10;}
+const fm=x=>+(+x).toPrecision(6);
+const pinL=()=>cfg.pin.split(',').map(x=>x.trim().toUpperCase()).filter(Boolean).map(x=>x.endsWith('USDT')?x:x+'USDT');
+function applyPin(){if(!cfg.usePin)return;const o=Object.fromEntries(cands.map(c=>[c.s,c]));cands=pinL().map(s=>o[s]||{s,n:0,w:0,wr:0,R:0,pf:0,h1:0,h2:0});cands.forEach(c=>c.rankScore=rankScore(c));cands.sort((a,b)=>(b.rankScore-a.rankScore)||(b.R-a.R));localStorage.orbC=JSON.stringify(cands)}
+function banc(s){ban[s]=Date.now();localStorage.orbBan=JSON.stringify(ban);if(!cfg.usePin)cands=cands.filter(c=>c.s!=s);localStorage.orbC=JSON.stringify(cands)}
+async function tg(t){if(!cfg.tgT||!cfg.tgC)return;try{await fetch('https://api.telegram.org/bot'+cfg.tgT+'/sendMessage',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:cfg.tgC,text:t,parse_mode:'HTML'})})}catch(e){log('telegram: '+e.message)}}
+async function pub(p){for(let i=0;i<4;i++){try{const r=await fetch(B+p);if(r.status==429||r.status==418){await sl(30000);continue}if(!r.ok)throw 0;return await r.json()}catch(e){await sl(1500)}}throw new Error('API '+p)}
+
+/* ---- وقت نيويورك ---- */
+const FM=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',weekday:'short'}),NC=new Map();
+function ny(t){const b=t-t%18e5;let r=NC.get(b);if(!r){const p={};FM.formatToParts(b).forEach(x=>p[x.type]=x.value);r={d:p.year+'-'+p.month+'-'+p.day,m:+p.hour*60+ +p.minute,wk:p.weekday=='Sat'||p.weekday=='Sun'};NC.set(b,r)}return{d:r.d,m:r.m+(t-b)/6e4,wk:r.wk}}
+const cdl=k=>{const c={t:k[0],o:+k[1],h:+k[2],l:+k[3],c:+k[4],v:+k[7]};c.n=ny(c.t);return c};
+
+/* ---- الاستراتيجية ---- */
+function dayInfo(cs){let hi=-1,lo=1e18,n=0,af=[];for(let x=0;x<cs.length;x++){const c=cs[x],m=c.n.m;if(m>=570&&m<600){hi=Math.max(hi,c.h);lo=Math.min(lo,c.l);n++}else if(m>=600&&m<960)af.push({...c,idx:x})}return{hi,lo,n,af,cs}}
+function ema(values,period){if(values.length<period)return null;const k=2/(period+1);let v=values.slice(0,period).reduce((a,b)=>a+b,0)/period;for(let x=period;x<values.length;x++)v=values[x]*k+v*(1-k);return v}
+function sig(i){for(let j=0;j<i.af.length;j++){const c=i.af[j],range=c.h-c.l;if(!(range>0))continue;const prev=i.cs.slice(Math.max(0,c.idx-30),c.idx);if(prev.length<20)continue;const body=Math.abs(c.c-c.o)/range,close=(c.c-c.l)/range,avgVol=prev.slice(-20).reduce((a,x)=>a+(x.v||0),0)/20,vr=avgVol>0?c.v/avgVol:0,closes=prev.slice(-29).map(x=>x.c).concat(c.c),e9=ema(closes,9),e21=ema(closes,21);if(body<cfg.minBody||vr<cfg.volMult)continue;const up=c.c>i.hi*(1+cfg.breakoutPct/100),dn=c.c<i.lo*(1-cfg.breakoutPct/100);if(up&&close>=cfg.closePos&&(!cfg.useTrend||(e9&&e21&&e9>e21&&c.c>e9)))return{j,s:'LONG',e:c.c,quality:Math.round(Math.min(100,body*35+Math.min(vr/2,1)*35+Math.min(((c.c-i.hi)/i.hi*100)/Math.max(cfg.breakoutPct*3,0.01),1)*20+10)),volRatio:vr,bodyRatio:body};if(dn&&close<=1-cfg.closePos&&(!cfg.useTrend||(e9&&e21&&e9<e21&&c.c<e9)))return{j,s:'SHORT',e:c.c,quality:Math.round(Math.min(100,body*35+Math.min(vr/2,1)*35+Math.min(((i.lo-c.c)/i.lo*100)/Math.max(cfg.breakoutPct*3,0.01),1)*20+10)),volRatio:vr,bodyRatio:body}}}
+function lv(s,e,hi,lo,rr=cfg.rr){const sl=cfg.sl=='mid'?(hi+lo)/2:(s=='LONG'?lo:hi),r=Math.abs(e-sl);if(!r||r/e*100>cfg.maxRisk)return;return{sl,r,tp:s=='LONG'?e+rr*r:e-rr*r}}
+function sim(s,e,L,rest,rr=cfg.rr){for(const c of rest){const hs=s=='LONG'?c.l<=L.sl:c.h>=L.sl,ht=s=='LONG'?c.h>=L.tp:c.l<=L.tp;if(hs)return-1;if(ht)return rr}if(!rest.length)return 0;const x=rest[rest.length-1].c;return(s=='LONG'?x-e:e-x)/L.r}
+function bt(cs){const today=ny(Date.now()).d,days={};cs.forEach(c=>(days[c.n.d]=days[c.n.d]||[]).push(c));const rs=[],RS={1:[],1.5:[],2:[],3:[]},pos=new Map(cs.map((c,j)=>[c.t,j]));
+for(const d of Object.keys(days).sort()){const cs2=days[d];if(d==today||cs2[0].n.wk)continue;const i=dayInfo(cs2);if(i.n<6||!i.af.length)continue;const g=sig(i);if(!g)continue;const L=lv(g.s,g.e,i.hi,i.lo);if(!L)continue;const ix=pos.get(i.af[g.j].t),rest=cs.slice(ix+1,ix+1+cfg.hold*12);rs.push(sim(g.s,g.e,L,rest));for(const k in RS)RS[k].push(sim(g.s,g.e,lv(g.s,g.e,i.hi,i.lo,+k),rest,+k))}
+if(!rs.length)return;const w=rs.filter(r=>r>0),ls=rs.filter(r=>r<=0).reduce((a,b)=>a-b,0),h=Math.floor(rs.length/2),sm=a=>a.reduce((x,y)=>x+y,0);
+return{rr:Object.fromEntries(Object.entries(RS).map(([k,a])=>[k,{wr:a.filter(r=>r===+k).length/a.length*100,R:a.reduce((x,y)=>x+y,0)}])),n:rs.length,w:w.length,wr:w.length/rs.length*100,R:sm(rs),pf:ls>0?sm(w)/ls:99,h1:sm(rs.slice(0,h)),h2:sm(rs.slice(h))}}
+const good=s=>s&&s.n>=cfg.minTrades&&s.wr>=cfg.minWin&&s.R>=cfg.minR&&s.pf>=cfg.pf&&(!cfg.robust||(s.h1>0&&s.h2>0));
+
+/* ---- المسح ---- */
+function fillEX(ex){ex.symbols.forEach(s=>{const f={};s.filters.forEach(x=>f[x.filterType]=x);EX[s.symbol]={st:+f.LOT_SIZE.stepSize,tk:+f.PRICE_FILTER.tickSize,mn:+(f.MIN_NOTIONAL||{}).notional||5,q:s.quantityPrecision,p:s.pricePrecision}})}
+async function ensureEX(){if(Object.keys(EX).length)return;fillEX(await pub('/fapi/v1/exchangeInfo'))}
+async function scan(){if(busy)return;busy=1;try{
+$('#pt').textContent='جلب العملات...';const[ex,tk]=await Promise.all([pub('/fapi/v1/exchangeInfo'),pub('/fapi/v1/ticker/24hr')]);
+fillEX(ex);
+const ok=new Set(ex.symbols.filter(s=>s.contractType=='PERPETUAL'&&s.quoteAsset=='USDT'&&s.status=='TRADING').map(s=>s.symbol));
+const liquid=tk.filter(t=>ok.has(t.symbol)&&!(ban[t.symbol]&&Date.now()-ban[t.symbol]<cfg.banDays*864e5)&&(!cfg.maxPrice||+t.lastPrice<cfg.maxPrice)&&+t.quoteVolume>=cfg.minVol*1e6).sort((a,b)=>b.quoteVolume-a.quoteVolume);
+const cap=Math.max(1,Math.min(150,Math.floor(cfg.maxCoins||60)));
+const L=cfg.usePin?pinL().filter(s=>ok.has(s)):liquid.slice(0,cap).map(t=>t.symbol);
+if(!cfg.usePin){[...pinL(),...favL()].forEach(s=>{if(ok.has(s)&&!L.includes(s))L.push(s)});}
+const out=[],st0=Date.now()-(cfg.days+2)*864e5;log('باك تيست '+cfg.days+' يوم | فحص '+L.length+' عقد (سيولة أعلى '+cap+' + المفضلة/القائمة اليدوية)');
+for(let i=0;i<L.length;i++){$('#pb').style.width=(i+1)/L.length*100+'%';$('#pt').textContent=`فحص ${L[i]} (${i+1}/${L.length})`;
+try{let o=[],s=st0;while(1){const d=await pub(`/fapi/v1/klines?symbol=${L[i]}&interval=5m&limit=1500&startTime=${s}`);o=o.concat(d);if(d.length<1500)break;s=d[d.length-1][0]+3e5;await sl(250)}
+const now=Date.now(),r=bt(o.filter(k=>k[0]+3e5<=now).map(cdl));if(cfg.usePin)out.push({s:L[i],...(r||{n:0,w:0,wr:0,R:0,pf:0,h1:0,h2:0})});else if(r&&r.n>=Math.max(10,cfg.minTrades)&&r.R>0)out.push({s:L[i],...r});else if(favSet().has(L[i])||pinL().includes(L[i]))log(L[i]+': '+(r?r.n+' صفقة | نجاح '+r.wr.toFixed(0)+'% | '+r.R.toFixed(1)+'R':'مفيش صفقات')+' ← لم تحقق الحد الأدنى أو عائدها غير موجب')}catch(e){log('تخطي '+L[i])}await sl(150)}
+out.forEach(c=>{c.sc=wil(c.w||0,c.n||0);c.rankScore=rankScore(c)});out.sort((a,b)=>(b.rankScore-a.rankScore)||(b.R-a.R));if(!cfg.usePin&&cfg.topN>0)out.length=Math.min(out.length,cfg.topN);cands=out;localStorage.orbC=JSON.stringify(out);localStorage.orbT=Date.now();
+$('#pt').textContent='خلص: '+out.length+' من أفضل '+cfg.topN+' مرشحًا';log('خلص الباك تيست: '+out.length+' مرشحة من '+L.length+' عقد تم فحصها');
+tg(`📊 <b>باك تيست ${cfg.days} يوم</b>\n`+(out.slice(0,15).map((c,i)=>`${i+1}. ${c.s} | ${c.n} صفقة | نجاح ${c.wr.toFixed(0)}% | ${c.R.toFixed(1)}R`).join('\n')||'مفيش عملات حققت الشروط'))}
+catch(e){log('❌ '+e.message)}busy=0;render()}
+
+/* ---- المراقبة الحية ---- */
+let liveBusy=0;async function live(manual){if(liveBusy){if(manual)$('#pt').textContent='الفحص شغال...';return}liveBusy=1;try{await liveRun(manual)}finally{liveBusy=0}}
+async function liveRun(manual){const n=ny(Date.now());
+if(manual&&!cands.length){$('#pt').textContent='⚠️ مفيش عملات مرشحة. اضغط ⚡ باك تيست الأول (أو خفف شروط الترشيح من ⚙️)';return}
+if(n.wk||n.m<600||n.m>=960){if(manual){const t=m=>new Date(Date.now()-(n.m-m)*6e4).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'});$('#pt').textContent=n.wk?'نيويورك مقفولة (عطلة). الإشارات من الاثنين للجمعة':`خارج الجلسة. الإشارات بين ${t(600)} و ${t(960)} بتوقيتك`}return}
+const start=Math.floor((Date.now()-(n.m-570)*6e4)/3e5)*3e5-60*3e5;let f=0,k=0;
+for(const c of [...cands].sort((a,b)=>(b.rankScore||0)-(a.rankScore||0))){const key=c.s+n.d;if(sigs.some(g=>g.k==key)||(!manual&&seen[key]))continue;k++;if(manual)$('#pt').textContent='فحص '+c.s+'...';try{
+const cs=(await pub(`/fapi/v1/klines?symbol=${c.s}&interval=5m&limit=200&startTime=${start}`)).filter(x=>x[0]+3e5<=Date.now()).map(cdl),i=dayInfo(cs);if(i.n<6||!i.af.length)continue;
+const g=sig(i);if(!g)continue;const age=(Date.now()-i.af[g.j].t-3e5)/6e4;if(!manual){seen[key]=1;if(age>cfg.maxAge)continue}const L=lv(g.s,g.e,i.hi,i.lo);if(!L)continue;
+if(sigs.some(g=>g.k==key))continue;const o={id:Date.now()+c.s,k:key,late:age>cfg.maxAge,s:c.s,side:g.s,e:g.e,sl:L.sl,tp:L.tp,st:'new',ts:Date.now(),quality:g.quality,rankScore:c.rankScore||0,volRatio:g.volRatio,bodyRatio:g.bodyRatio,bt:`${c.n} صفقة | ${c.wr.toFixed(0)}% | ${c.R.toFixed(1)}R`};sigs.unshift(o);f++;
+if(!o.late)tg(`${g.s=='LONG'?'🟢 شراء':'🔴 بيع'} <b>${c.s}</b>\nالدخول: ${fm(g.e)}\nالوقف: ${fm(L.sl)} (${(L.r/g.e*100).toFixed(2)}%)\nالهدف: ${fm(L.tp)} (1:${cfg.rr})\nجودة الدخول: ${g.quality}/100 | ترتيب العملة: ${(c.rankScore||0)}/100\nباك تيست: ${o.bt}`);log('إشارة '+c.s+' '+g.s+(o.late?' (متأخرة '+Math.round(age)+'د)':''));if(cfg.autoExec&&!o.late)await act(o.id,'e',1)}catch(e){}await sl(150)}
+sv();if(manual)$('#pt').textContent=f?'لقيت '+f+' إشارة':'فحصت '+k+' عملة: مفيش كسر للنطاق لسه';else if(!busy)$('#pt').textContent='🔄 آخر فحص تلقائي '+new Date().toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit',second:'2-digit'});render()}
+
+/* ---- بينانس ---- */
+async function sg(m,p,q){if(!crypto.subtle)throw new Error('لازم تفتح الصفحة من https');if(!cfg.key||!cfg.secret)throw new Error('حط API Key و Secret');
+const s=new URLSearchParams({...q,timestamp:Date.now(),recvWindow:10000}).toString(),k=await crypto.subtle.importKey('raw',new TextEncoder().encode(cfg.secret),{name:'HMAC',hash:'SHA-256'},false,['sign']),
+h=[...new Uint8Array(await crypto.subtle.sign('HMAC',k,new TextEncoder().encode(s)))].map(b=>b.toString(16).padStart(2,'0')).join(''),
+r=await fetch(B+p+'?'+s+'&signature='+h,{method:m,headers:{'X-MBX-APIKEY':cfg.key}}),j=await r.json();if(!r.ok||j.code<0)throw new Error(j.msg||r.status);return j}
+const rq=(x,e)=>(Math.floor(x/e.st+1e-9)*e.st).toFixed(e.q),rt=(x,e)=>(Math.round(x/e.tk)*e.tk).toFixed(e.p);
+async function execReal(g,s0){await ensureEX();const e=EX[g.s];if(!e)throw new Error('بيانات العملة مش متاحة: '+g.s);const p=px[g.s]||g.e,q=rq(s0*cfg.lev/p,e);if(q*p<e.mn)throw new Error('الرصيد المتاح مش كفاية: الصفقة أقل من الحد الأدنى '+e.mn+'$');
+const sd=g.side=='LONG'?'BUY':'SELL',op=sd=='BUY'?'SELL':'BUY';
+await sg('POST','/fapi/v1/marginType',{symbol:g.s,marginType:'ISOLATED'}).catch(()=>{});await sg('POST','/fapi/v1/leverage',{symbol:g.s,leverage:cfg.lev});
+await sg('POST','/fapi/v1/order',{symbol:g.s,side:sd,type:'MARKET',quantity:q});
+try{for(const[t,v]of[['STOP_MARKET',g.sl],['TAKE_PROFIT_MARKET',g.tp]])await sg('POST','/fapi/v1/algoOrder',{algoType:'CONDITIONAL',symbol:g.s,side:op,type:t,triggerPrice:rt(v,e),closePosition:'true',workingType:'MARK_PRICE'})}
+catch(er){await closeReal(g);throw new Error('فشل وضع الوقف/الهدف، اتقفلت الصفقة: '+er.message)}}
+async function closeReal(g){let pr;try{pr=await sg('GET','/fapi/v3/positionRisk',{symbol:g.s})}catch(e){pr=await sg('GET','/fapi/v2/positionRisk',{symbol:g.s})}
+const a=pr.map(x=>x.positionAmt).find(x=>+x!=0);if(a)await sg('POST','/fapi/v1/order',{symbol:g.s,side:+a>0?'SELL':'BUY',type:'MARKET',quantity:a.replace('-',''),reduceOnly:'true'});
+await sg('DELETE','/fapi/v1/algoOpenOrders',{symbol:g.s}).catch(()=>{})}
+
+/* ---- إدارة المحفظة ---- */
+let bal=null;
+async function rdBal(manual){if(!cfg.key||!cfg.secret||!crypto.subtle){bal=null;if(manual)log('الرصيد محتاج API Key و Secret والصفحة من https');renderG();return}
+try{let r;try{r=await sg('GET','/fapi/v3/balance',{})}catch(e){r=await sg('GET','/fapi/v2/balance',{})}
+const u=r.find(x=>x.asset=='USDT');if(!u)throw new Error('مفيش رصيد USDT');
+const inc=await sg('GET','/fapi/v1/income',{startTime:Math.floor(Date.now()-ny(Date.now()).m*6e4),limit:1000});
+const day=inc.filter(x=>x.asset=='USDT'&&['REALIZED_PNL','COMMISSION','FUNDING_FEE'].includes(x.incomeType)).reduce((a,x)=>a+ +x.income,0);
+bal={w:+u.balance,a:+u.availableBalance,day}}catch(e){bal=null;log('❌ الرصيد: '+e.message)}renderG()}
+function sz(){let s=cfg.size;if(cfg.real&&bal){const f=bal.a*(1-cfg.reserve/100);if(f<s)s=Math.max(0,f)}return s}
+function gd(){const d=ny(Date.now()).d,cl=sigs.filter(g=>g.st=='closed'&&g.cd==d&&g.fill&&!!g.real==!!cfg.real).sort((a,b)=>b.ce-a.ce);
+let pnl=cl.reduce((a,g)=>a+g.pnl,0);if(cfg.real&&bal)pnl=bal.day;let st=0;for(const g of cl){if(g.pnl<0)st++;else break}
+const op=sigs.filter(g=>g.st=='open').length;let why='';
+if(cfg.dayLoss>0&&pnl<=-cfg.dayLoss)why='وصلت حد الخسارة اليومي';else if(cfg.streak>0&&st>=cfg.streak)why=st+' خسائر متتالية';
+return{d,pnl,st,op,why}}
+function renderG(){const G=gd(),s=sz();$('#grd').innerHTML=`<div class="top"><b class="c mono" style="font-size:16px">RISK GUARD</b><span class="${G.why?'r':'g'}">${G.why?'⛔ واقف: '+G.why:'✅ شغال'}</span></div>
+<div class="pr"><span>الرصيد: <b class="mono">${bal?bal.w.toFixed(2)+'$ (متاح '+bal.a.toFixed(2)+')':'—'}</b></span><span>اليوم: <b class="mono ${G.pnl>=0?'g':'r'}">${G.pnl.toFixed(2)}$</b> <span class="m">/ -${cfg.dayLoss}$</span></span></div>
+<div class="pr"><span>مفتوحة ${G.op}/${cfg.maxOpen}</span><span>خسائر متتالية ${G.st}/${cfg.streak}</span><span class="${s<cfg.size?'y':''}">الصفقة الجاية: ${s.toFixed(2)}$</span></div>
+<div class="act"><button class="b4" onclick="rdBal(1)">🔄 تحديث الرصيد</button></div>`;
+if(G.why&&localStorage.orbStop!=G.d){localStorage.orbStop=G.d;tg('🛑 <b>وقف التداول النهارده</b>: '+G.why+'\nالنتيجة: '+G.pnl.toFixed(2)+'$\nبيكمل يوم التداول الجاي (نيويورك).')}}
+
+/* ---- الأزرار والأسعار ---- */
+function fin(g,x,why){g.st='closed';g.pnl=g.size*(g.side=='LONG'?1:-1)*(x-g.fill)/g.fill*g.lev;g.why=why;g.cd=ny(Date.now()).d;g.ce=Date.now();if(why=='وقف'&&cfg.autoBan)banc(g.s);tg(`${g.pnl>=0?'✅':'❌'} ${g.s} اتقفلت (${why}): ${g.pnl.toFixed(2)}$`)}
+async function act(id,a,auto){const g=sigs.find(x=>x.id==id);if(!g)return;try{
+if(a=='x'){if(g.st=='open'){if(g.real)await closeReal(g);fin(g,px[g.s]||g.e,'يدوي')}else{g.st='closed';g.pnl=0;g.why='تجاهل';g.hyp=(g.size||cfg.size)*(g.side=='LONG'?1:-1)*((px[g.s]||g.e)-g.e)/g.e*cfg.lev}}
+if(a=='e'){if(g.st!='new')return;if(cfg.real)await rdBal();const G=gd();if(G.why)throw new Error('التداول واقف النهارده: '+G.why+'. بيكمل في يوم التداول الجاي');if(cfg.maxOpen>0&&G.op>=cfg.maxOpen)throw new Error('وصلت أقصى عدد صفقات مفتوحة ('+cfg.maxOpen+')');const s0=sz();if(auto){const pp=+(await pub('/fapi/v1/ticker/price?symbol='+g.s)).price;px[g.s]=pp;if(Math.abs(pp-g.e)>0.5*Math.abs(g.e-g.sl))throw new Error('السعر ابتعد عن نقطة الدخول')}if(cfg.real){if(!auto&&!confirm(`تنفيذ حقيقي على Binance؟\n${g.side} ${g.s}\n${s0.toFixed(2)}$ × ${cfg.lev}x`))return;await execReal(g,s0);g.real=1}
+g.st='open';g.fill=px[g.s]||g.e;g.size=s0;g.lev=cfg.lev;log('✅ تنفيذ '+(g.real?'حقيقي ':'تجريبي ')+g.s);tg((g.real?'✅ اتنفذت حقيقي ':'🧪 اتنفذت تجريبي ')+g.s+' '+g.side+' | '+g.size.toFixed(2)+'$ × '+g.lev+'x')}}catch(e){log('❌ '+e.message);if(!auto)alert(e.message);else tg('❌ فشل التنفيذ التلقائي '+g.s+': '+e.message)}sv();render()}
+async function poll(){if(!sigs.some(g=>g.st!='closed'))return;try{(await pub('/fapi/v1/ticker/price')).forEach(t=>px[t.symbol]=+t.price)}catch(e){return}
+sigs.filter(g=>g.st=='open').forEach(g=>{const p=px[g.s],L=g.side=='LONG';if(!p)return;if(L?p<=g.sl:p>=g.sl)fin(g,g.sl,'وقف');else if(L?p>=g.tp:p<=g.tp)fin(g,g.tp,'هدف')});sv();render()}
+
+function sim2(s,e,L,rest,fin){for(const c of rest){const hs=s=='LONG'?c.l<=L.sl:c.h>=L.sl,ht=s=='LONG'?c.h>=L.tp:c.l<=L.tp;if(hs)return{o:'SL',r:-1};if(ht)return{o:'TP',r:cfg.rr}}const x=rest.length?rest[rest.length-1].c:e;return{o:fin?'END':'OPEN',r:(s=='LONG'?x-e:e-x)/L.r}}
+async function report(){if(busy)return;if(!cands.length){$('#pt').textContent='⚠️ اعمل باك تيست الأول';return}busy=1;try{
+const n=ny(Date.now());let k=0;while(k<5&&(ny(Date.now()-k*864e5).wk||(k==0&&n.m<600)))k++;
+const t=Date.now()-k*864e5,nn=ny(t),start=Math.floor((t-(nn.m-570)*6e4)/3e5)*3e5-60*3e5,fin=k>0||n.m>=960,rows=[];
+for(let i=0;i<cands.length;i++){const c=cands[i];$('#pb').style.width=(i+1)/cands.length*100+'%';$('#pt').textContent='تقرير '+c.s+' ('+(i+1)+'/'+cands.length+')';try{
+const cs=(await pub(`/fapi/v1/klines?symbol=${c.s}&interval=5m&limit=500&startTime=${start}`)).filter(x=>x[0]+3e5<=Date.now()).map(cdl),d=dayInfo(cs);if(d.n<6||!d.af.length)continue;
+const g=sig(d);if(!g)continue;const L=lv(g.s,g.e,d.hi,d.lo);if(!L)continue;const rest=cs.filter(x=>x.t>d.af[g.j].t).slice(0,cfg.hold*12),r=sim2(g.s,g.e,L,rest,rest.length>=cfg.hold*12);
+rows.push({s:c.s,side:g.s,t:d.af[g.j].t+3e5,...r,usd:cfg.size*cfg.lev*r.r*L.r/g.e})}catch(e){}await sl(150)}
+rows.sort((a,b)=>a.t-b.t);const w=rows.filter(x=>x.o=='TP').length,l=rows.filter(x=>x.o=='SL').length,op=rows.length-w-l,tot=rows.reduce((a,x)=>a+x.usd,0),lab={TP:'✅ هدف',SL:'❌ وقف',OPEN:'⏳ شغالة',END:'⏹ انتهت المدة'};
+const bad=cfg.autoBan?rows.filter(x=>x.o=='SL').map(x=>x.s):[];bad.forEach(banc);
+$('#rpt').innerHTML=`<div class="card"><b>📅 تقرير ${nn.d}${k?' (آخر يوم تداول)':' (النهارده)'}</b> <span class="m" style="font-size:11px">لو اتنفذت كلها: ${cfg.size}$ × ${cfg.lev}x</span>
+<div class="st"><div><b>${rows.length}</b><span>صفقات</span></div><div><b class="g">${w}</b><span>هدف</span></div><div><b class="r">${l}</b><span>وقف</span></div><div><b class="${tot>=0?'g':'r'}">${tot>=0?'+':'-'}$${Math.abs(tot).toFixed(2)}</b><span>الصافي</span></div></div>
+${op?`<p class="m" style="font-size:12px;margin:8px 0 0">${op} صفقة لسه شغالة أو انتهت مدتها (محسوبة بآخر سعر)</p>`:''}
+${bad.length?`<p class="r" style="font-size:12px;margin:8px 0 0">🚫 اتستبعدت: ${bad.map(x=>x.replace('USDT','')).join('، ')}</p>`:''}<table style="margin-top:8px"><thead><tr><th>العملة</th><th></th><th>الوقت</th><th>النتيجة</th><th>$</th></tr></thead><tbody>${rows.map(x=>`<tr><td class="mono">${x.s.replace('USDT','')}</td><td class="${x.side=='LONG'?'g':'r'}">${x.side=='LONG'?'▲':'▼'}</td><td>${new Date(x.t).toLocaleTimeString('ar-EG',{hour:'2-digit',minute:'2-digit'})}</td><td>${lab[x.o]}</td><td class="${x.usd>=0?'g':'r'}">${x.usd.toFixed(2)}</td></tr>`).join('')||'<tr><td colspan=5 class="m">مفيش كسر للنطاق في العملات المرشحة</td></tr>'}</tbody></table>
+<p class="w">الصفقة بتفضل مفتوحة لحد الهدف أو الوقف (زي التنفيذ الحقيقي). الدخول من إغلاق شمعة الكسر، والوقف بيتحسب الأول لو الاتنين في نفس الشمعة، من غير عمولة أو انزلاق.</p></div>`;
+$('#pt').textContent='تم التقرير: '+rows.length+' صفقة'+(bad.length?' | استبعدت '+bad.length:'');render()}catch(e){log('❌ '+e.message)}busy=0}
+function clr(){const k=sigs.filter(g=>g.st=='open');if(!confirm('مسح السجل؟'+(k.length?'\n(الصفقات المفتوحة '+k.length+' هتفضل)':'')))return;sigs=k;sv();$('#log').textContent='';$('#rpt').innerHTML='';render()}
+
+/* ---- العرض ---- */
+function card(g){const p=px[g.s],L=g.side=='LONG',en=g.fill||g.e,o=g.st=='open',pc=p?(L?1:-1)*(p-en)/en*100*(g.lev||cfg.lev):0,u=(g.size||cfg.size)*pc/100,cl=g.st=='closed';
+const pct=p?Math.max(0,Math.min(100,(p-g.sl)/(g.tp-g.sl)*100)):0,v=cl?g.pnl:u;
+return`<div class="card sg ${L?'up':''} ${cl?'done':''}"><div class="top"><b class="mono ${v>=0?'g':'r'}">${p||cl?(v>=0?'+':'')+'$'+v.toFixed(2):'—'} <small>${cl?g.why+(g.hyp!=null?' · لو اتنفذت: '+g.hyp.toFixed(2)+'$':''):p?'('+pc.toFixed(1)+'%)':''}</small></b><div><b>${g.s.replace('USDT','')}</b> <span class="${L?'g':'r'}">${L?'▲':'▼'}</span><span class="tag">${g.real?'حقيقي':o||cl?'تجريبي':g.late?'متأخرة':'إشارة'}${g.quality!=null?' · جودة '+g.quality+'/100':''}</span></div></div>
+<div class="pr mono"><span class="g">TP: ${fm(g.tp)}</span><span class="m">${p?'الآن '+fm(p):''}</span><span class="r">SL: ${fm(g.sl)}</span></div><div class="bar"><i style="width:${pct}%"></i></div><div class="pr mono"><span class="m">${g.bt||''}</span><span>دخول: ${fm(en)}</span></div>
+${cl?'':`<div class="act"><button class="b3" onclick="act('${g.id}','x')">✖ إغلاق</button>${g.st=='new'?`<button class="b2" onclick="act('${g.id}','e')">⚡ تنفيذ</button>`:''}<button class="b4" onclick="window.open('https://www.tradingview.com/chart/?symbol=BINANCE:${g.s}.P')">📊 الشارت</button></div>`}</div>`}
+function render(){renderG();$('#sigs').innerHTML=sigs.map(card).join('');$('#s1').textContent=cands.length;$('#s2').textContent=sigs.filter(g=>g.st=='new').length;$('#s3').textContent=sigs.filter(g=>g.st=='open').length;
+const t=sigs.filter(g=>g.st=='closed').reduce((a,g)=>a+(g.pnl||0),0);$('#s4').textContent=(t>=0?'+$':'-$')+Math.abs(t).toFixed(2);$('#s4').className=t>=0?'g':'r';
+$('#ct').innerHTML=cands.map((c,i)=>`<tr><td>${i+1} · ${(c.rankScore||0).toFixed(0)}</td><td class="mono">${c.s.replace('USDT','')}</td><td>${c.n}</td><td class="g">${c.wr.toFixed(0)}%</td><td class="${c.R>0?'g':'r'}">${c.R.toFixed(1)}</td><td>${c.pf.toFixed(1)}</td></tr>`+(c.rr?`<tr><td colspan=6 class="m" style="font-size:11px">الهدف: ${Object.entries(c.rr).sort((a,b)=>a[0]-b[0]).map(([k,v])=>`${k}R ← <b class="${v.R>=0?'g':'r'}">${v.R>=0?'+':''}${v.R.toFixed(1)}</b> (${v.wr.toFixed(0)}%)`).join(' | ')}</td></tr>`:'')).join('')||'<tr><td colspan=6 class="m">اضغط باك تيست</td></tr>';
+$('#cinfo').textContent='أفضل '+cfg.topN+' من '+(cfg.maxCoins||60)+' عقد عالي السيولة · ترتيب تاريخي · '+(localStorage.orbT?'آخر تحديث '+new Date(+localStorage.orbT).toLocaleString('ar-EG'):'لم يُجرَ الاختبار بعد')}
+let t1,t2,t3;function timers(){clearInterval(t1);clearInterval(t2);clearInterval(t3);t3=setInterval(()=>{if(cfg.key&&cfg.secret)rdBal()},60000);t2=setInterval(poll,5000);if(cfg.auto)t1=setInterval(()=>{if(!busy)live()},30000)}
+sigs=sigs.filter((g,i,a)=>!g.k||a.findIndex(x=>x.k==g.k)==i);applyPin();ensureEX().catch(()=>{});hdr();render();timers();poll();if(cfg.key&&cfg.secret)rdBal();try{navigator.wakeLock.request('screen')}catch(e){}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){try{navigator.wakeLock.request('screen')}catch(e){}if(cfg.auto)live();poll()}});
+if(cfg.auto&&Date.now()-(+localStorage.orbT||0)>864e5)scan();
+</script></body></html>
